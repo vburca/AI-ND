@@ -129,14 +129,15 @@ class CustomPlayer:
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            pass
+            return self.minimax(game, self.search_depth)[1]
+            #pass
 
         except Timeout:
             # Handle any actions required at timeout, if necessary
             pass
 
         # Return the best move from the last completed search iteration
-        raise NotImplementedError
+        #raise NotImplementedError
 
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
@@ -172,8 +173,70 @@ class CustomPlayer:
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        # initialize dummy best move
+        best_move = (-1, -1)
+        # initialize dummy best score
+        best_score = float("-inf")
+
+        if depth == 0:
+            return (self.score(game, self), best_move)
+
+        if maximizing_player:
+            best_score = float("-inf") # this is for clarity purposes, since it's already -inf
+            for move in game.get_legal_moves(self):
+                score = self.__min_value_mm(game.forecast_move(move), depth - 1)
+                # check if we get a better score for the current move
+                # if we do, update the best_score and the best_move with the current move
+                if score > best_score:
+                    best_score = score
+                    best_move = move
+        else: # else, if we are the minimizing player, do the same thing but minimize the scores
+            best_score = float("inf")
+            for move in game.get_legal_moves(self):
+                score = self.__max_value_mm(game.forecast_move(move), depth - 1)
+                # check if we get a better score for the current move
+                # if we do, update the best_score and the best_move with the current move
+                if score < best_score:
+                    best_score = score
+                    best_move = move
+
+        return (best_score, best_move)
+
+    def __max_value_mm(self, game, depth):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise Timeout()
+
+        # if we reached a "terminal" state in terms of the depth we wanted to
+        # look at, return the current score at this node
+        if depth == 0:
+            return self.score(game, self)
+
+        # assume best score is -inf, and try to maximize it
+        best_score = float("-inf")
+
+        for move in game.get_legal_moves():
+            # here we maximize the best score across the other possible branching min-nodes
+            best_score = max(best_score, self.__min_value_mm(game.forecast_move(move), depth - 1))
+
+        return best_score
+
+    def __min_value_mm(self, game, depth):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise Timeout()
+
+        # if we reached a "terminal" state in terms of the depth we wanted to
+        # look at, return the current score at this node
+        if depth == 0:
+            return self.score(game, self)
+
+        # assume best score is +inf, and try to minimize it
+        best_score = float("inf")
+
+        for move in game.get_legal_moves():
+            # here we minimize the best score across the other possible branching max-nodes
+            best_score = min(best_score, self.__max_value_mm(game.forecast_move(move), depth - 1))
+
+        return best_score
 
     def alphabeta(self, game, depth, alpha=float("-inf"), beta=float("inf"), maximizing_player=True):
         """Implement minimax search with alpha-beta pruning as described in the
