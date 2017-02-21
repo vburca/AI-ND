@@ -118,26 +118,46 @@ class CustomPlayer:
 
         self.time_left = time_left
 
-        # TODO: finish this function!
-
         # Perform any required initializations, including selecting an initial
         # move from the game board (i.e., an opening book), or returning
         # immediately if there are no legal moves
+
+        if len(legal_moves) == 0:
+            return (-1, -1)
+
+        # just for safety, grab a random move from the legal ones initially
+        best_move = random.choice(legal_moves)
 
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
             # automatically catch the exception raised by the search method
             # when the timer gets close to expiring
-            return self.minimax(game, self.search_depth)[1]
-            #pass
 
+            if self.iterative:
+                depth = 1
+                # dummy initialization
+                best_score = 0
+                # cutoff condition: realistically, since we maximize, it could only get to +inf
+                while (best_score is not float("-inf")) and (best_score is not float("inf")):
+                    best_score, best_move = max((best_score, best_move), self.search(game, depth))
+                    depth += 1
+            else:
+                _, best_move = self.search(game)
         except Timeout:
             # Handle any actions required at timeout, if necessary
-            pass
+            return best_move
 
         # Return the best move from the last completed search iteration
-        #raise NotImplementedError
+        return best_move
+
+    def search(self, game, depth=None):
+        if depth is None:
+            depth = self.search_depth
+        if self.method == 'minimax':
+            return self.minimax(game, depth)
+        else:
+            return self.alphabeta(game, depth)
 
     def minimax(self, game, depth, maximizing_player=True):
         """Implement the minimax search algorithm as described in the lectures.
