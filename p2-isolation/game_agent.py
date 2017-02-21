@@ -279,5 +279,93 @@ class CustomPlayer:
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
-        # TODO: finish this function!
-        raise NotImplementedError
+        # initialize dummy best move
+        best_move = (-1, -1)
+        # initialize dummy best score
+        best_score = float("-inf")
+
+        if depth == 0:
+            return (self.score(game, self), best_move)
+
+        if maximizing_player:
+            best_score = float("-inf") # this is for clarity purposes, since it's already -inf
+            for move in game.get_legal_moves(self):
+                score = self.__min_value_ab(game.forecast_move(move), depth - 1, alpha, beta)
+                # check if we get a better score for the current move
+                # if we do, update the best_score and the best_move with the current move
+                if score > best_score:
+                    best_score = score
+                    best_move = move
+
+                if best_score >= beta:
+                    return (best_score, best_move)
+                alpha = max(alpha, best_score)
+        else: # else, if we are the minimizing player, do the same thing but minimize the scores
+            best_score = float("inf")
+            for move in game.get_legal_moves(self):
+                score = self.__max_value_ab(game.forecast_move(move), depth - 1, alpha, beta)
+                # check if we get a better score for the current move
+                # if we do, update the best_score and the best_move with the current move
+                if score < best_score:
+                    best_score = score
+                    best_move = move
+
+                if best_score <= alpha:
+                    return (best_score, best_move)
+                beta = min(beta, best_score)
+
+        return (best_score, best_move)
+
+    def __max_value_ab(self, game, depth, α, β):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise Timeout()
+
+        # if we reached a "terminal" state in terms of the depth we wanted to
+        # look at, return the current score at this node
+        if depth == 0:
+            return self.score(game, self)
+
+        # assume best score is -inf, and try to maximize it
+        best_score = float("-inf")
+
+        for move in game.get_legal_moves():
+            # here we maximize the best score across the other possible branching min-nodes
+            best_score = max(best_score, self.__min_value_ab(game.forecast_move(move), depth - 1, α, β))
+
+            # check if we can prune the remaining nodes
+            if best_score >= β:
+                # if our best score is higher than the maximum score that the above min-node would
+                # consider, prune the remaining nodes
+                return best_score
+
+            # update the α value, useful for potential lower min-nodes
+            α = max(α, best_score)
+
+        return best_score
+
+    def __min_value_ab(self, game, depth, α, β):
+        if self.time_left() < self.TIMER_THRESHOLD:
+            raise Timeout()
+
+        # if we reached a "terminal" state in terms of the depth we wanted to
+        # look at, return the current score at this node
+        if depth == 0:
+            return self.score(game, self)
+
+        # assume best score is +inf, and try to minimize it
+        best_score = float("inf")
+
+        for move in game.get_legal_moves():
+            # here we minimize the best score across the other possible branching max-nodes
+            best_score = min(best_score, self.__max_value_ab(game.forecast_move(move), depth - 1, α, β))
+
+            # check if we can prune the remaining nodes
+            if best_score <= α:
+                # if our best score is lower than the minimum score that the above max-node would
+                # consider, prune the remaining nodes
+                return best_score
+
+            # update the β value, useful for potential lower max-nodes
+            β = min(β, best_score)
+
+        return best_score
