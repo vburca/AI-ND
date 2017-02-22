@@ -37,9 +37,45 @@ def custom_score(game, player):
         The heuristic value of the current game state to the specified player.
     """
 
-    # TODO: finish this function!
-    raise NotImplementedError
+    if game.is_loser(player):
+        return float("-inf")
 
+    if game.is_winner(player):
+        return float("inf")
+
+    return wtf(game, player)
+
+def wtf(game, player):
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    board_size = game.width * game.height
+
+    if game.move_count < board_size * .3:
+        return own_moves
+    elif game.move_count < board_size * .7:
+        return own_moves / (board_size + opp_moves)
+    else:
+        return move_prev_diff_weighted(game, player)
+
+def conditional_score1(game, player):
+    board_size = game.width * game.height
+
+    # if covered less than 30%
+    if game.move_count < board_size * .2:
+        return len(game.get_legal_moves(player))
+    else:
+        return move_prev_diff_weighted(game, player, 2)
+
+def move_diff_weighted(game, player, weight=1):
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    return float(own_moves - weight * opp_moves)
+
+opp_moves_previous = 0
+def move_prev_diff_weighted(game, player, weight=1):
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
+    return float(own_moves + weight * (opp_moves_previous - opp_moves))
 
 class CustomPlayer:
     """Game-playing agent that chooses a move using your evaluation function
@@ -117,6 +153,9 @@ class CustomPlayer:
         """
 
         self.time_left = time_left
+
+        global opp_moves_previous
+        opp_moves = len(game.get_legal_moves(game.get_opponent(self)))
 
         # Perform any required initializations, including selecting an initial
         # move from the game board (i.e., an opening book), or returning
