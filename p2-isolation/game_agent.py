@@ -71,6 +71,7 @@ def move_diff_weighted(game, player, weight=1):
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
     return float(own_moves - weight * opp_moves)
 
+# define the opponent's previously open moves
 opp_moves_previous = 0
 def move_prev_diff_weighted(game, player, weight=1):
     own_moves = len(game.get_legal_moves(player))
@@ -262,6 +263,24 @@ class CustomPlayer:
         return (best_score, best_move)
 
     def __max_value_mm(self, game, depth):
+        """Max search for minimax. This function recursively searches for
+        the maximum score that can be achieved from the current game state
+
+        Parameters
+        ----------
+        game : `isolation.Board`
+            An instance of `isolation.Board` encoding the current state of the
+            game (e.g., player locations and blocked cells).
+
+        depth : int
+            Depth is an integer representing the maximum number of plies to
+            search in the game tree before aborting
+
+        Returns
+        -------
+        float
+            Max score of the search branch started at the current game state
+        """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
@@ -280,6 +299,24 @@ class CustomPlayer:
         return best_score
 
     def __min_value_mm(self, game, depth):
+        """Min search for minimax. This function recursively searches for
+        the minimum score that can be achieved from the current game state
+
+        Parameters
+        ----------
+        game : `isolation.Board`
+            An instance of `isolation.Board` encoding the current state of the
+            game (e.g., player locations and blocked cells).
+
+        depth : int
+            Depth is an integer representing the maximum number of plies to
+            search in the game tree before aborting
+
+        Returns
+        -------
+        float
+            Min score of the search branch started at the current game state
+        """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
@@ -376,6 +413,25 @@ class CustomPlayer:
         return (best_score, best_move)
 
     def __max_value_ab(self, game, depth, α, β):
+        """Max search for alpha-beta. This function recursively searches for
+        the maximum score that can be achieved from the current game state, while
+        pruning search branches that would not be considered by the above min-node
+
+        Parameters
+        ----------
+        game : `isolation.Board`
+            An instance of `isolation.Board` encoding the current state of the
+            game (e.g., player locations and blocked cells).
+
+        depth : int
+            Depth is an integer representing the maximum number of plies to
+            search in the game tree before aborting
+
+        Returns
+        -------
+        float
+            Max score of the search branch started at the current game state
+        """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
@@ -403,6 +459,25 @@ class CustomPlayer:
         return best_score
 
     def __min_value_ab(self, game, depth, α, β):
+        """Min search for alpha-beta. This function recursively searches for
+        the minimum score that can be achieved from the current game state, while
+        pruning search branches that would not be considered by the above max-node
+
+        Parameters
+        ----------
+        game : `isolation.Board`
+            An instance of `isolation.Board` encoding the current state of the
+            game (e.g., player locations and blocked cells).
+
+        depth : int
+            Depth is an integer representing the maximum number of plies to
+            search in the game tree before aborting
+
+        Returns
+        -------
+        float
+            Min score of the search branch started at the current game state
+        """
         if self.time_left() < self.TIMER_THRESHOLD:
             raise Timeout()
 
