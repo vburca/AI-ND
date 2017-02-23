@@ -43,24 +43,24 @@ def custom_score(game, player):
     if game.is_winner(player):
         return float("inf")
 
-    return wtf(game, player)
+    return float(conditional_score(game, player))
 
-def wtf(game, player):
+def conditional_score(game, player):
     own_moves = len(game.get_legal_moves(player))
     opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
     board_size = game.width * game.height
 
-    if game.move_count < board_size * .3:
+    if game.move_count < board_size * .2:
         return own_moves
-    elif game.move_count < board_size * .7:
+    elif game.move_count < board_size * .8:
         return own_moves / (board_size + opp_moves)
     else:
-        return move_prev_diff_weighted(game, player)
+        return own_moves + (opp_moves_previous - opp_moves)
 
 def conditional_score1(game, player):
     board_size = game.width * game.height
 
-    # if covered less than 30%
+    # if covered less than 20%
     if game.move_count < board_size * .2:
         return len(game.get_legal_moves(player))
     else:
