@@ -43,7 +43,36 @@ def custom_score(game, player):
     if game.is_winner(player):
         return float("inf")
 
-    return float(conditional_score(game, player))
+    score = float(conditional_score2(game, player))
+    return score
+
+def avoid_edges(game, player, high=2, medium=1, low=3):
+    own_moves = game.get_legal_moves(player)
+    opp_moves = game.get_legal_moves(game.get_opponent(player))
+
+    own_center_moves, own_edge_moves, own_corner_moves = _count_position_moves(own_moves, game.width, game.height)
+    opp_center_moves, opp_edge_moves, opp_corner_moves = _count_position_moves(opp_moves, game.width, game.height)
+
+    return high * (own_center_moves + opp_corner_moves) \
+        + medium * (own_edge_moves + opp_edge_moves) \
+        - low * (own_corner_moves + opp_center_moves)
+
+def _count_position_moves(player_moves, width, height):
+    corners = [(0, 0), (0, width - 1), (height - 1, 0), (height - 1, width - 1)]
+
+    # return 3-tuple of (center_moves, edge_moves, corner_moves)
+    moves = [0, 0, 0]
+
+    for move in player_moves:
+        if move in corners:
+            moves[2] += 1
+        elif move[0] == 0 or move[0] == height - 1 or \
+            move[1] == 0 or move[1] == width - 1:
+            moves[1] += 1
+        else:
+            moves[0] += 1
+
+    return moves
 
 def conditional_score(game, player):
     own_moves = len(game.get_legal_moves(player))
@@ -55,16 +84,19 @@ def conditional_score(game, player):
     elif game.move_count < board_size * .8:
         return own_moves / (board_size + opp_moves)
     else:
-        return own_moves + (opp_moves_previous - opp_moves)
+        return avoid_edges(game, player, 3, 1, 5)
 
-def conditional_score1(game, player):
+def conditional_score2(game, player):
+    own_moves = len(game.get_legal_moves(player))
+    opp_moves = len(game.get_legal_moves(game.get_opponent(player)))
     board_size = game.width * game.height
 
-    # if covered less than 20%
     if game.move_count < board_size * .2:
-        return len(game.get_legal_moves(player))
+        return own_moves
+    elif game.move_count < board_size * .8:
+        return own_moves / (board_size + opp_moves)
     else:
-        return move_prev_diff_weighted(game, player, 2)
+        return own_moves + (opp_moves_previous - opp_moves)
 
 def move_diff_weighted(game, player, weight=1):
     own_moves = len(game.get_legal_moves(player))
@@ -165,9 +197,15 @@ class CustomPlayer:
         if len(legal_moves) == 0:
             return (-1, -1)
 
+        # pick the center spot
+        #if (game.move_count == 1) and \
+        #    ((int(game.width / 2), int(game.height / 2)) in legal_moves):
+        #    return (int(game.width / 2), int(game.height / 2))
+
         # just for safety, grab a random move from the legal ones initially
         best_move = random.choice(legal_moves)
 
+        depth = 0
         try:
             # The search method call (alpha beta or minimax) should happen in
             # here in order to avoid timeout. The try/except block will
@@ -185,9 +223,12 @@ class CustomPlayer:
             else:
                 _, best_move = self.search(game)
         except Timeout:
+            #print("Timed out; moves= " + str(game.move_count) + " ;depth= " + str(depth) + " ;best_score= " + str(best_score) + " ;best_move= " + str(best_move))
+            #print(depth)
             # Handle any actions required at timeout, if necessary
             return best_move
 
+        #print("Ended search; depth=", depth)
         # Return the best move from the last completed search iteration
         return best_move
 

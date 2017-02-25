@@ -1,51 +1,52 @@
 # Project 2 - Game-Playing Agent Heuristic Analysis
 
-When trying to come up with heuristics for my game-agent, I started from the cost function proposed in the lectures, specifically:
-`f(position) = own_moves(position) - opponent_moves(position)`
-Moreover, I tried the *weighted* version of this function, giving a weight to `opponent_moves` and thus making it more aggressive. As it is shown in the below table, this did not work too well over the an entire game, although it does seem that at times, it could produce an advantage.
+### Introduction
+While working on this project, I implemented a ton of heuristic functions, along with different variations for each of them, using weights and conditionals. I chose only a handful of them to present in this analysis.
+Performance based on winning ration is presented at the end, in the summary table.
 
-Therefore, my next approach (not documented in the table, but documented through the code) was to try a conditional approach and divide the game into multiple phases. I though that maybe initially we want to *corner* the opponent, moving on their possible future open positions (if possible), and further towards the end of the game we would want to have more freedom in moving away from the positions close to the opponent (i.e. not necessarily covering their future possible moves).Thus I tried addopting something similar to:
+### Heuristic 1 - `avoid_edges`
+One of the heuristics that I choose to present first in this analysis is the `avoid_edges` one. The idea behind it is to not only count the number of moves that both our agent and its opponent have, but also split them into favorable or not favorable moves. Therefore, we want a function that is maximized when we maximize the favorable moves and minimize the not favorable ones.
+We note the following heuristic for this variation of the Isolation game (this will be used in later heuristic functions examples too):
+> The maximum number of moves that a position could have is **8**.
+
+Moreover, the edges and corners seem to be not so ideal positions, as they have 4 and respectively 2 number of moves available from them, in a best case scenario.
+Therefore we define the `avoid_edges` heuristic as follows:
 ```
-if the board is covered less than 20%:
-    apply the aggressive weighted cost function
-else:
-    apply the regular f(position) # basically with weight = 1
+avoid_edges(position) = (own_center_moves + opp_corner_moves) + (own_edge_moves + opp_edge_moves) - (own_corner_moves + opp_center_moves)
 ```
-This did not work so well so I moved on, trying to look what else we would want to optimize. I tried looking a bit further, trying to optimize the function from one position to the next. Therefore, I initially tried to store the `# of own moves` from before selecting the new position (through *Iterative Deepening*). My cost function was: 
-`g(position) = (own_moves(position) - own_moves(position - 1)) - opp_moves(position)`.
-The reasoning behind this being that, at every new *step* (or position), we want the highest value of this function `g`. In order to achieve this, we would need to maximize the component
-`(own_moves(position) - own_moves(position - 1))` 
-by making sure that at this *step* we get more moves that at the previous step (**yes, everyone can already see how badly I judged this...**), while also minimizing `opp_moves(position)`. Why was this a bad decision? Pretty simple - as we progress through the game, we will **naturally** have fewer and fewer open moves to choose from, so this function would start breaking.
+We want to maximize our center moves and (possibly) edge moves along with the opponent's corner moves and (possibly) edge moves, while minimizing our corner moves and the opponent's center moves.
 
-But this "*fewer and fewer*" argument made me think of the opponent instead. As we progress through the game, we want **the opponent** to have fewer and fewer moves, from step to step (from position to position). Therefore, instead of keeping track of my own previous open moves, I started keeping track of the opponent's previous open moves:
-`h(position) = own_moves(position) + (opp_moves(position - 1) - opp_moves(position))`.
-Therefore, now we try to maximize `h` by maximizing our own moves for this position (`own_moves`, naturally), **and** maximizing the component:
-`(opp_moves(position - 1) - opp_moves(position))`
-which, by maximizing it, means that we try to minimize the number of moves the opponent will have at this position **in comparison** to what they had in the previous position.
+### Heuristic 2 - weighted `avoid_edges`
+Since the `avoid_edges` strategy seemed to make sense (in my head at least), I started playing around with weighted versions of it, and got to the following form, which brought some improvements to the original one:
+```
+avoid_edges(position) = 2 * (own_center_moves + opp_corner_moves) + (own_edge_moves + opp_edge_moves) - 3 * (own_corner_moves + opp_center_moves)
+```
+This version is more aggressive on minimizing our agent's corner moves and our opponent's center moves, while treating as second priority maximizing its center moves and the opponent's corner moves.
 
-This also did not perform at too high rates, but I felt like I was getting closer. Similar to what I read about in the AlphaGo paper ("similar" might be a far term to use in this context), I thought of trying a hybrid approach, in which I would use a *conditional* approach as I explained above, along with this *previous moves count for opponent* strategy. Moreover, there was another interesting thing that I noticed while looking at win percentages (I highlighted it in the table as well):
-> My agents' win rates against **XX_Open** were horrible, over a variety of tested cost functions.
+### Heuristic 3 - `conditional_score2`
+I really wanted to use a conditional approach because I have seen multiple chess agents do something similar - split the game in multiple phases. Also, I have played a lot with my previously presented heuristics + others in order to come to (what seem to be) the right branches of the conditionals, but here the main idea behind it is that:
+* At the beginning of the game, the agent does not care that much about the opponent, and is just trying to maximize its own number of moves (getting closer to the idea of a Knight's Tour problem)
+* During mid game, we want to maximize the ratio between number of the agent's moves to the board size - we do this in order to really quantify what the count actually means in regards to the game size (something to note here, as stated previously, is that the max move count will be *8*). Moreover, we want to minimize opponent's moves, so the mid game branch also takes care of that.
+* At the end of the game we try to maximize our move count as well as minimize the difference between the opponent's move count from the previous position to the current one - this is a somewhat aggressive tactic in which we would try to take spots from the board where the opponent could move towards.
 
-Therefore, I came up with the third variation, a conditional approach, where I split the game into 3 phases:
-1. In the very few starting moves, I go for the simplest function I know (one that has been beating my agents pretty constantly) - `own_moves(position)`, the simple count of my agent's moves
-2. As we progress through the game, we want a function that keeps track of the ration of open moves that my agent has and the actual size of the board - we saw from a previous example above that it really matters **knowing what are you counting in regards to what absolute value**. By that, I mean that it is useful to know that I have, for example, 5 open moves out of a board of 20 vs out of a board of 7 let's say. Indeed, this heuristic is also taken into account by the way I split the game phases, but still, the ratio helps. Along with this ratio, just like with the other functions, we want to minimize the opponent's number of moves. Therefore, a function that achieves this, while maximizing it when maximizing my agent's number of moves, is:
-`F(position) = own_moves(position) / (game.width * game.height + opp_moves(position))`
-3. As we get closer to the end game, we start to care about minimizing the opponent's number of moves in regards to their previous position's number of moves. In earlier stages of the game this might be harder to achieve due to the board being empty - it has a bigger impact when there are not that many open moves. Here we used function `h(position)` described above.
-
-
-*Notes:* I defined the functions `weighted` because I also tried variations of weights along the heuristics, but they have been evaluated in accordance to what I described above.
-The agents were evaluated on a *Mid-2012 MacBook Pro*: 2.5 GHz Intel Core i5, 8GB RAM.
-
-| Agent\Heuristic | ID_Improved | WMoveDiff(w=2) | WPrevMoveDiff(w=1) | ConditionalScore |
-| :-------------: | :---------: | :------------: | :----------------: | :--------------: |
-| Random          | 100%        | 85%            | 85%                | 95%              | 
-| MM_Null         | 85%         | 75%            | 85%                | 90%              |
-| MM_Open         | 65%         | *40%*          | *40%*              | 90%              |
-| MM_Improved     | 60%         | 15%            | 60%                | 60%              |
-| AB_Null         | 90%         | 75%            | 65%                | 90%              |
-| AB_Open         | 50%         | *25%*          | *50%*              | 65%              |
-| AB_Improved     | 50%         | 45%            | 50%                | 65%              |
-| **Overall**     | **71.43%**  | **51.43%**     | **62.14%**         | **79.29%**       |
+### Conclusion
+To conclude, I would suggest picking the 3rd heuristic presented here, `conditional_score2` for the following reasons:
+* As shown in the Summary Table below, it provides the best average Overall winning rate
+* As described above, in the section corresponding to *Heuristic 3*, it looks at both players, but also at the current state of the board, trying to maximize for the positive moves of our agent and minimize the positive moves of the opponent
+* A short analysis has been done on the search depth achieved through all of these heuristics, and there was no big difference observed. The average depths, per game phase were:
+    * early-game: ~6-7
+    * late-game: ~1500
 
 
-In conclusion, I think there are other board parameters that could hold useful information in defining such cost functions, and I will keep tweaking with them in the following days/weeks.
+### Summary Table
+
+| Agent\Heuristic | ID_Improved | avoid_edges | weighted avoid_edges |  conditional_score2 |
+| :-------------: | :---------: | :---------: | :------------------: | :-----------------: |
+| Random          | 95%         | 95%         | 100%                 | 95%                 | 
+| MM_Null         | 90%         | 85%         | 90%                  | 90%                 |
+| MM_Open         | 65%         | 75%         | 80%                  | 90%                 |
+| MM_Improved     | 65%         | 65%         | 70%                  | 60%                 |
+| AB_Null         | 90%         | 85%         | 90%                  | 90%                 |
+| AB_Open         | 50%         | 55%         | 50%                  | 65%                 |
+| AB_Improved     | 65%         | 55%         | 55%                  | 65%                 |
+| **Overall**     | **74.29%**  | **73.57%**  | **76.43%**           | **79.29%**          |
