@@ -224,8 +224,12 @@ class AirCargoProblem(Problem):
         executed.
         '''
         # TODO implement (see Russell-Norvig Ed-3 10.2.3  or Russell-Norvig Ed-2 11.2)
-        count = 0
-        return count
+        count = len(self.goal) # how many goals do we have
+        current_state = decode_state(node.state, self.state_map)
+        for pos_fluent in current_state.pos:
+            if pos_fluent in self.goal: # means that it was already achieved
+                count -= 1
+        return count # we only want to return the delta: how many goal fluents still need to be achieved
 
 
 def air_cargo_p1() -> AirCargoProblem:
