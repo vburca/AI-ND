@@ -1,6 +1,6 @@
 # Project 3 - Planning Search Problems
 
-## Air Cargo Problem. Metrics for non-heuristic planning solution searches
+## Metrics for planning solution searches
 
 Before we start analyzing each problem with each of the search algorithms, let's define the `optimality` of a problem. First, we will find the optimal solution to the problem and describe the plan. The length of the optimal solution will be `len_opt_sol`. Then, the `optimality` is defined as: `len_opt_sol / len_current_search * 100`
 #### Results for the `air_cargo_p1` problem.
@@ -29,6 +29,8 @@ Length of optimal solution: `len_opt_sol = 6`.
 | depth_first_graph_search  | 21         | 22         | 0.022073595000620116       | 30% |
 | depth_limited_search      | 101         | 271         | 0.15392913300092914       | 12% |
 | uniform_cost_search       | 55         | 57         | 0.07226297700071882      | 100% |
+| astar_search (ignore_preconditions)       | 41         | 43         | 0.05520928999976604      | 100% |
+| astar_search (level_sum)       | 11         | 13         | 2.6240368370017677      | 100% |
 
 #### Results for the `air_cargo_p2` problem.
 Problem definition:
@@ -59,6 +61,8 @@ Length of optimal solution: `len_opt_sol = 9`.
 | depth_first_graph_search  | 624        | 625         | 5.251924964000864       | 1.453% |
 | depth_limited_search      | n/a         | n/a         | > 10 mins       | n/a |
 | uniform_cost_search       | 4852         | 4854         | 69.47413250000136      | 100% |
+| astar_search (ignore_preconditions)       | 1506         | 1508         | 18.203693280000152      | 100% |
+| astar_search (level_sum)       | 86         | 88         | 277.0997285960002      | 100% |
 
 #### Results for the `air_cargo_p3` problem.
 Problem definition:
@@ -92,6 +96,10 @@ Length of optimal solution: `len_opt_sol = 12`.
 | depth_first_graph_search  | 408        | 409         | 2.6251068919991667      | 3.061% |
 | depth_limited_search      | n/a         | n/a         | > 10 mins       | n/a |
 | uniform_cost_search       | n/a         | n/a         | > 10 mins      | n/a |
+| astar_search (ignore_preconditions)       | 5118         | 5120         | 113.36011673600296      | 100% |
+| astar_search (level_sum)       | n/a         | n/a         | > 10 mins      | n/a |
 
 #### Comments
-As we can see, the `breadth_first_search` always produces the optimal solution in the shortest time. This is expected, given the description of the algorithm. Moreover, this is also a factor that influences the large number of expansions and goal tests associated with `breadth_first_search`. On the other hand, `depth_first_graph_search` has a lower expansion number, but it fails to produce the optimal solution due to its approach of continuously expanding deeper instead of checking for the shortest path.
+Something that we can see right from the start is that `astar_search` and `breadth_first_search` always produce 100% optimal solutions. This is due to the fact that BFS, by design, searches for the shortest path within a planning graph, and `astar_search` is built on top of it as well. Moreover, it is interesting to observe the timing differences between these most optimal search results - `astar_search (level_sum)` produces the most optimal result in *the longest time*, almost 10 times slower or more in some instances of the search space. This is a result of the overhead implied by calculating a heuristic at each step. We also notice that `astar_search (ignore_preconditions)` searches a significantly reduce number of nodes compared to simple BFS, in roughly the same amount of time! So, reducing the complexity of the problem, by ignoring the actions' preconditions, does help in this situation.
+
+Overall, in the case of the Air Cargo problem, it seems like `astar_search (ignore_preconditions)` offers the most reliable results in terms of optimality, time of execution and number of expanded nodes. This might not always be the case though - as we can see, as the problem becomes small enough, a simple BFS might be a more straight-forward approach.
