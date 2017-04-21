@@ -76,8 +76,31 @@ class SelectorBIC(ModelSelector):
         """
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection based on BIC scores
-        raise NotImplementedError
+        # Set initial best log likelihood score as +inf; we care about low BIC scores
+        best_bic = float("+inf")
+        # Set initial default value for best number of states
+        best_num_states = self.n_constant
+
+        seqs, features = self.X.shape
+
+        # Iterate over all the possible numbers of components
+        for num_states in range(self.min_n_components, self.max_n_components + 1):
+            model = self.base_model(num_states)
+
+            # states + states * (states - 1) + states * features * 2
+            p = num_states + num_states * (num_states - 1) + num_states * features * 2
+
+            try:
+                logL = model.score(self.X, self.lengths)
+                bic = -2 * logL + p * np.log(seqs)
+
+                if bic < best_bic:
+                    best_bic = bic
+                    best_num_states = num_states
+            except:
+                continue
+
+        return self.base_model(best_num_states)
 
 
 class SelectorDIC(ModelSelector):
@@ -89,11 +112,42 @@ class SelectorDIC(ModelSelector):
     DIC = log(P(X(i)) - 1/(M-1)SUM(log(P(X(all but i))
     '''
 
+    def _dic_score(self, logL, logL_sum, M):
+        # Return the dic score, based on the formula above
+        return logL - (logL_sum - logL) / (M - 1)
+
+    def _best_num_states(self, numstates_scores):
+        # If we were not able to calculate the score for any of number of states, return the default
+        if len(numstates_scores):
+            return self.n_constant
+
+        scores_sum = sum(numstates_scores)
+        # Calculate each individual dic score
+        M = len(numstates_scores)
+        dic_scores = [self._dic_score(s, scores_sum, M) for s in numstates_scores]
+        # Get the index of the max dic score
+        max_dic_score_i = np.argmax(dic_scores)
+        # This will correspond to the index of the number of states that generated this dic score
+        num_states = numstates_scores.keys()
+        return num_states[max_dic_score_i]
+
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection based on DIC scores
-        raise NotImplementedError
+        # Keep track of all the scores for each number of states
+        numstates_scores = {}
+
+        # Iterate over all the possible numbers of components
+        for num_states in range(self.min_n_components, self.max_n_components + 1):
+            model = self.base_model(num_states)
+
+            try:
+                logL = model.score(self.X, self.lengths)
+                numstates_scores[num_states] = logL
+            except:
+                continue
+
+        return self.base_model(self._best_num_states(numstates_scores))
 
 
 class SelectorCV(ModelSelector):
@@ -104,5 +158,46 @@ class SelectorCV(ModelSelector):
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
-        # TODO implement model selection using CV
-        raise NotImplementedError
+        # Since we are using the default KFold split, which works over 3 splits, we need to check
+        # how many sequences we have for this word
+        # If we do not have at least 3 sequences, do not use the splitting method
+        if len(self.sequences) < 3:
+            return self.base_model(self.n_constant)
+
+        # Set the splitting method
+        split_method = KFold()
+
+        # Set initial best log likelihood score as -inf
+        best_log_likelihood = float("-inf")
+        # Set initial default value for best number of states
+        best_num_states = self.n_constant
+
+        # Iterate over all the possible numbers of components
+        for num_states in range(self.min_n_components, self.max_n_components + 1):
+            scores = []
+
+            # Do the split and train on each training combination
+            for cv_train_idx, cv_test_idx in split_method.split(self.sequences):
+                train_X, train_Xlengths = combine_sequences(cv_train_idx, self.sequences)
+                test_X, test_Xlengths = combine_sequences(cv_test_idx, self.sequences)
+
+                try:
+                    model = GaussianHMM(n_components=num_states, covariance_type='diag', n_iter=1000,
+                                        random_state=self.random_state).fit(train_X, train_Xlengths)
+                    scores.append(model.score(test_X, test_Xlengths))
+                except:
+                    # If we encounter an error, skip
+                    continue
+
+            # Now, if we have some scores for this number of states, find the best score; if there are no scores,
+            # continue to next number of states
+            if len(scores) <= 0:
+                continue
+
+            # Update the best score, averaging over the current num_states' scores
+            scores_mean = np.mean(scores)
+            if best_log_likelihood < scores_mean:
+                best_log_likelihood = scores_mean
+                best_num_states = num_states
+
+        return self.base_model(best_num_states)
