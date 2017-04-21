@@ -117,8 +117,9 @@ class SelectorDIC(ModelSelector):
         return logL - (logL_sum - logL) / (M - 1)
 
     def _best_num_states(self, numstates_scores):
-        # If we were not able to calculate the score for any of number of states, return the default
-        if len(numstates_scores):
+        # Given the DIC formula, we need at least 2 scores in order to calculate it (since M = # of scores and we
+        # need a factor of 1/(M - 1))
+        if len(numstates_scores) < 2:
             return self.n_constant
 
         scores_sum = sum(numstates_scores)
@@ -128,7 +129,7 @@ class SelectorDIC(ModelSelector):
         # Get the index of the max dic score
         max_dic_score_i = np.argmax(dic_scores)
         # This will correspond to the index of the number of states that generated this dic score
-        num_states = numstates_scores.keys()
+        num_states = list(numstates_scores.keys())
         return num_states[max_dic_score_i]
 
     def select(self):
