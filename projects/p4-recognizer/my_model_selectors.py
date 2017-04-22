@@ -112,43 +112,52 @@ class SelectorDIC(ModelSelector):
     DIC = log(P(X(i)) - 1/(M-1)SUM(log(P(X(all but i))
     '''
 
-    def _dic_score(self, logL, logL_sum, M):
-        # Return the dic score, based on the formula above
-        return logL - (logL_sum - logL) / (M - 1)
-
-    def _best_num_states(self, numstates_scores):
-        # Given the DIC formula, we need at least 2 scores in order to calculate it (since M = # of scores and we
-        # need a factor of 1/(M - 1))
-        if len(numstates_scores) < 2:
-            return self.n_constant
-
-        scores_sum = sum(numstates_scores)
-        # Calculate each individual dic score
-        M = len(numstates_scores)
-        dic_scores = [self._dic_score(s, scores_sum, M) for s in numstates_scores]
-        # Get the index of the max dic score
-        max_dic_score_i = np.argmax(dic_scores)
-        # This will correspond to the index of the number of states that generated this dic score
-        num_states = list(numstates_scores.keys())
-        return num_states[max_dic_score_i]
-
     def select(self):
         warnings.filterwarnings("ignore", category=DeprecationWarning)
 
         # Keep track of all the scores for each number of states
-        numstates_scores = {}
+        dic_scores = {}
 
         # Iterate over all the possible numbers of components
         for num_states in range(self.min_n_components, self.max_n_components + 1):
-            model = self.base_model(num_states)
-
             try:
+                # Fit on train
+                model = self.base_model(num_states)
+                # Score on train
                 logL = model.score(self.X, self.lengths)
-                numstates_scores[num_states] = logL
+
+                # Calculate the scores for everything else
+                antiLogL = 0.0
+                antiCount = 0
+                for word in self.hwords:
+                    if word == self.this_word:
+                        continue
+
+                    X, lenghts = self.hwords[word]
+                    # Score on everything else
+                    antiLogL += model.score(X, lenghts)
+                    antiCount += 1
+
+                # If we have any
+                if antiCount > 0:
+                    antiLogL /= float(antiCount)
+                    # Calculate DIC as the formula states
+                    dic_scores[num_states] = logL - antiLogL
             except:
                 continue
 
-        return self.base_model(self._best_num_states(numstates_scores))
+        # Set default best num states to the constant one
+        best_num_states = self.n_constant
+
+        # If we have any DIC scores, find the best
+        if len(dic_scores) > 0:
+            # Get the index of the max dic score
+            max_dic_score_i = np.argmax(list(dic_scores.values()))
+            # This will correspond to the index of the number of states that generated this dic score
+            dic_num_states = list(dic_scores.keys())
+            best_num_states = dic_num_states[max_dic_score_i]
+
+        return self.base_model(best_num_states)
 
 
 class SelectorCV(ModelSelector):
